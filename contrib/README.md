@@ -15,9 +15,10 @@ and coordinator titles in pane metadata, pane labels, tab labels, and terminal
 titles (including older, manually started coordinators).
 It also checks the board's task links and protects their whole workspaces,
 plus panes running inside the board data folder. Ownership is checked again
-immediately before hibernation, including `--force`. Invalid task records
-prevent hibernation rather than risking a board pane. Ordinary agents retain
-the plugin's existing rules.
+immediately before hibernation, including `--force`. Invalid task records or
+unreadable task directories prevent hibernation rather than risking a board
+pane. An absent board task directory is allowed. With readable ownership
+records, ordinary agents retain the plugin's existing rules.
 
 ## Install
 

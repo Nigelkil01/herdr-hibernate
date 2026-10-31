@@ -78,6 +78,43 @@ class BoardSafetyTests(unittest.TestCase):
         path.write_text('{')
         self.assertEqual('exempt', self.classify()[0])
 
+    def test_unreadable_task_directories_protect_custom_labelled_panes(self):
+        path = self.data / 'tasks/repo/1/task.json'
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps({'link': {'workspace': 'w1'}}))
+        pane = {**self.pane, 'label': 'Implementation'}
+        for directory in (self.data / 'tasks', path.parent.parent, path.parent):
+            with self.subTest(directory=directory):
+                mode = directory.stat().st_mode
+                directory.chmod(0)
+                try:
+                    self.assertEqual('exempt', self.classify(pane)[0])
+                finally:
+                    directory.chmod(mode)
+
+    def test_directory_becoming_unreadable_before_force_prevents_kill(self):
+        path = self.data / 'tasks/repo/1/task.json'
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps({'link': {'workspace': 'w1'}}))
+        self.plugin.herdr.side_effect = [
+            {'pane': {**self.pane, 'label': 'Implementation'}}, {'tab': {'label': 'Custom'}}]
+        directory = path.parent.parent
+        mode = directory.stat().st_mode
+        directory.chmod(0)
+        try:
+            self.assertFalse(self.plugin.hibernate_pane(
+                self.pane, {}, {}, {}, '2h', False, force=True))
+        finally:
+            directory.chmod(mode)
+
+    def test_readable_unrelated_tasks_do_not_prevent_ordinary_hibernation(self):
+        path = self.data / 'tasks/repo/1/task.json'
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps({'link': {'workspace': 'w2'}}))
+        (path.parent.parent / 'notes.txt').write_text('not a task directory')
+        (path.parent.parent / 'review').mkdir()  # Board helper folder, no task record.
+        self.assertEqual(('hibernate', 'idle 2h'), self.classify())
+
     def test_non_board_pane_uses_upstream_rules_unchanged(self):
         self.assertEqual(('hibernate', 'idle 2h'), self.classify())
         self.plugin.herdr.return_value = {'pane': self.pane, 'tab': {'label': 'ordinary'}}

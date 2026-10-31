@@ -6,6 +6,25 @@ import json
 import os
 from pathlib import Path
 import re
+from stat import S_ISDIR
+
+
+def task_paths(tasks):
+    # glob silently ignores directory read errors; ownership must fail closed.
+    try:
+        repositories = list(tasks.iterdir())
+    except FileNotFoundError:
+        return  # No board task directory on this machine.
+    for repository in repositories:
+        if S_ISDIR(repository.stat().st_mode):
+            for task in repository.iterdir():
+                if S_ISDIR(task.stat().st_mode):
+                    record = task / 'task.json'
+                    try:
+                        record.lstat()
+                    except FileNotFoundError:
+                        continue  # Readable helper folders need not contain a task.
+                    yield record
 
 
 def install_guard(plugin):
@@ -26,7 +45,7 @@ def install_guard(plugin):
             if pane.get(key) and Path(pane[key]).resolve().is_relative_to(data.resolve()):
                 return 'board folder'
         try:
-            for path in (data / 'tasks').glob('*/*/task.json'):
+            for path in task_paths(data / 'tasks'):
                 task = json.loads(path.read_text())
                 link = task.get('link') or {}
                 if not isinstance(link, dict):
