@@ -28,6 +28,29 @@ to `~/.config/herdr-hibernate/plugin-path` (one line). The launcher accepts all
 upstream commands. Use it for manual hibernation too; invoking the upstream
 script directly bypasses this guard.
 
+### Plugin menu actions
+
+The upstream plugin's built-in **scan once** and **hibernate focused pane now**
+actions invoke its original script and bypass the guard. Disable that plugin;
+leave its script installed for the launcher to load. Copy this directory's
+`herdr-plugin.toml` next to the installed launcher, then run:
+
+```sh
+herdr plugin disable bengemine.hibernate
+herdr plugin link ~/.local/lib/herdr-hibernate --enabled
+```
+
+This adds the user-owned `nigel.board-safe-hibernate` plugin. Its actions and
+events use the launcher. Linking and disabling take effect immediately; no
+Herdr server restart is needed. Keep the upstream plugin disabled after updates.
+If keybindings explicitly name `bengemine.hibernate.scan` or `.now`, point them
+at `nigel.board-safe-hibernate.scan` or `.now` instead. Disabled upstream actions
+cannot run, even when invoked directly by ID.
+
+The local manifest intentionally offers runtime actions only. Manage watcher
+installation/removal through the launcher CLI and update the upstream script
+separately; neither operation should replace the guarded menu registration.
+
 For an existing systemd user service, add
 `~/.config/systemd/user/herdr-hibernate.service.d/board-safe.conf`:
 
@@ -59,5 +82,9 @@ systemd, and restart the watcher. Resume existing stubs with Enter before
 removing their launcher or plugin files. A machine with no previous watcher
 can instead disable and stop `herdr-hibernate.service`. No Herdr server
 restart is needed.
+
+To undo menu registration too, disable `nigel.board-safe-hibernate`. Only
+re-enable `bengemine.hibernate` after pausing hibernation: its original menu
+actions do not protect board panes.
 
 Run the regression suite with `python3 -m unittest discover -s tests`.
