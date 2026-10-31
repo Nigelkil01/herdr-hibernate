@@ -40,6 +40,7 @@ herdr plugin disable bengemine.hibernate
 herdr plugin link ~/.local/lib/herdr-hibernate --enabled
 ```
 
+Skip the disable command if the upstream plugin was never registered.
 This adds the user-owned `nigel.board-safe-hibernate` plugin. Its actions and
 events use the launcher. Linking and disabling take effect immediately; no
 Herdr server restart is needed. Keep the upstream plugin disabled after updates.
@@ -50,6 +51,11 @@ cannot run, even when invoked directly by ID.
 The local manifest intentionally offers runtime actions only. Manage watcher
 installation/removal through the launcher CLI and update the upstream script
 separately; neither operation should replace the guarded menu registration.
+The upstream script's `update` command re-links its original manifest, so do
+not use it while live hibernation is enabled. Pause hibernation for upstream
+maintenance, then verify the original plugin is disabled before enabling it.
+
+### Watcher
 
 For an existing systemd user service, add
 `~/.config/systemd/user/herdr-hibernate.service.d/board-safe.conf`:
