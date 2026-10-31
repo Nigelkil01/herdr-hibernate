@@ -47,7 +47,9 @@ def install_guard(plugin):
         try:
             for path in task_paths(data / 'tasks'):
                 task = json.loads(path.read_text())
-                link = task.get('link') or {}
+                link = task.get('link')
+                if link is None:  # Missing/null means the task has no pane yet.
+                    link = {}
                 if not isinstance(link, dict):
                     raise ValueError('invalid task link')
                 socket = os.environ.get('HERDR_SOCKET_PATH')

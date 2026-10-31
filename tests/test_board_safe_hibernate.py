@@ -78,6 +78,30 @@ class BoardSafetyTests(unittest.TestCase):
         path.write_text('{')
         self.assertEqual('exempt', self.classify()[0])
 
+    def test_invalid_links_protect_custom_labelled_panes_and_prevent_forced_kill(self):
+        path = self.data / 'tasks/repo/1/task.json'
+        path.parent.mkdir(parents=True)
+        pane = {**self.pane, 'label': 'Implementation'}
+        self.plugin.herdr.return_value = {'pane': pane, 'tab': {'label': 'Custom'}}
+        for link in ([], '', 0, False, ['w1'], 'w1', 1, True):
+            with self.subTest(link=link):
+                path.write_text(json.dumps({'link': link}))
+                self.assertEqual(('exempt', 'cannot verify board ownership: invalid task link'),
+                                 self.classify(pane))
+                self.assertFalse(self.plugin.hibernate_pane(
+                    pane, {}, {}, {}, '2h', False, force=True))
+
+    def test_valid_empty_links_preserve_ordinary_hibernation(self):
+        path = self.data / 'tasks/repo/1/task.json'
+        path.parent.mkdir(parents=True)
+        self.plugin.herdr.return_value = {'pane': self.pane, 'tab': {'label': 'ordinary'}}
+        for task in ({}, {'link': None}, {'link': {}}):
+            with self.subTest(task=task):
+                path.write_text(json.dumps(task))
+                self.assertEqual(('hibernate', 'idle 2h'), self.classify())
+                self.assertTrue(self.plugin.hibernate_pane(
+                    self.pane, {}, {}, {}, '2h', False, force=True))
+
     def test_unreadable_task_directories_protect_custom_labelled_panes(self):
         path = self.data / 'tasks/repo/1/task.json'
         path.parent.mkdir(parents=True)

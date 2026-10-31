@@ -17,8 +17,10 @@ It also checks the board's task links and protects their whole workspaces,
 plus panes running inside the board data folder. Ownership is checked again
 immediately before hibernation, including `--force`. Invalid task records or
 unreadable task directories prevent hibernation rather than risking a board
-pane. An absent board task directory is allowed. With readable ownership
-records, ordinary agents retain the plugin's existing rules.
+pane. Only missing, null or object-valued task links are accepted; invalid
+values such as `[]`, `""`, `0` and `false` also prevent hibernation. An absent
+board task directory is allowed. With readable ownership records, ordinary
+agents retain the plugin's existing rules.
 
 ## Install
 
