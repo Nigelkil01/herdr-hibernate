@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""User-owned launcher for herdr-hibernate; keep board panes alive."""
+import importlib.machinery
+import importlib.util
+import json
+import os
+from pathlib import Path
+import re
+
+
+def install_guard(plugin):
+    classify = plugin.classify
+    hibernate = plugin.hibernate_pane
+
+    def protected(pane, labels):
+        titles = [pane.get('label'), pane.get('tokens', {}).get('title'),
+                  labels.get(pane.get('tab_id')), pane.get('terminal_title')]
+        for title in titles:
+            title = (title or '').lstrip('💤📌 ')
+            if (re.fullmatch(r'Agent(?: \([^)]*\))?|Reviewer #\d+', title)
+                    or re.search(r'\bcoordinator\b', title, re.IGNORECASE)):
+                return 'board agent, reviewer or coordinator'
+        home = Path(os.environ.get('HERDR_PROJECTS_HOME', Path.home() / '.herdr-projects'))
+        data = Path(os.environ.get('HERDR_PROJECTS_DATA_DIR', home / 'data'))
+        for key in ('cwd', 'foreground_cwd'):
+            if pane.get(key) and Path(pane[key]).resolve().is_relative_to(data.resolve()):
+                return 'board folder'
+        try:
+            for path in (data / 'tasks').glob('*/*/task.json'):
+                task = json.loads(path.read_text())
+                link = task.get('link') or {}
+                if not isinstance(link, dict):
+                    raise ValueError('invalid task link')
+                socket = os.environ.get('HERDR_SOCKET_PATH')
+                if socket and link.get('socket') and link['socket'] != socket:
+                    continue  # Pane/workspace IDs belong to one Herdr server.
+                # All stages stay protected: a finished task can receive tell/retry later.
+                if (link.get('workspace') and link['workspace'] == pane.get('workspace_id')
+                        or link.get('pane') == pane.get('pane_id')):
+                    return 'board-owned workspace or pane'
+        except (OSError, ValueError, AttributeError) as exc:
+            return 'cannot verify board ownership: %s' % exc
+        return None
+
+    def safe_classify(pane, labels, cfg, state, self_pane):
+        reason = protected(pane, labels)
+        if reason:
+            return 'exempt', reason
+        return classify(pane, labels, cfg, state, self_pane)
+
+    def safe_hibernate(pane, labels, *args, **kwargs):
+        # Recheck after classification, including explicit --force requests.
+        fresh = plugin.herdr('pane', 'get', pane['pane_id']).get('pane')
+        reason = 'pane disappeared'
+        if fresh:
+            tab = plugin.herdr('tab', 'get', fresh['tab_id']).get('tab')
+            reason = (protected(fresh, {**labels, fresh['tab_id']: tab.get('label', '')})
+                      if tab else 'tab disappeared')
+        if reason:
+            plugin.log('SKIP %s: %s' % (pane['pane_id'], reason))
+            return False
+        return hibernate(fresh, labels, *args, **kwargs)
+
+    plugin.classify = safe_classify
+    plugin.hibernate_pane = safe_hibernate
+    return plugin
+
+
+def main():
+    path = Path.home() / '.config/herdr-hibernate/plugin-path'
+    upstream = path.read_text().strip()
+    loader = importlib.machinery.SourceFileLoader('herdr_hibernate', upstream)
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    plugin = importlib.util.module_from_spec(spec)
+    loader.exec_module(plugin)
+    install_guard(plugin)
+    plugin.SELF = str(Path(__file__).resolve())
+    plugin.main()
+
+
+if __name__ == '__main__':
+    main()
