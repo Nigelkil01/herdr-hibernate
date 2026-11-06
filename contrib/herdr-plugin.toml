@@ -1,0 +1,61 @@
+id = "nigel.board-safe-hibernate"
+name = "Herdr Hibernate (board-safe)"
+version = "1.0.0"
+min_herdr_version = "0.7.0"
+description = "User-owned hibernation actions that keep work board panes awake."
+platforms = ["linux"]
+
+# Disable bengemine.hibernate before linking this directory. Its actions bypass
+# the guard. Keep its unchanged script installed as the launcher's upstream.
+
+[[actions]]
+id = "status"
+title = "Hibernate: status table"
+contexts = ["workspace"]
+command = ["./board-safe-hibernate", "status"]
+
+[[actions]]
+id = "scan"
+title = "Hibernate: scan once"
+contexts = ["workspace"]
+command = ["./board-safe-hibernate", "scan"]
+
+[[actions]]
+id = "now"
+title = "Hibernate focused pane now"
+contexts = ["pane", "workspace"]
+command = ["./board-safe-hibernate", "now"]
+
+[[actions]]
+id = "view"
+title = "Hibernate: cycle agents list (all / running / hibernated)"
+contexts = ["workspace"]
+command = ["./board-safe-hibernate", "view"]
+
+[[actions]]
+id = "keep"
+title = "Hibernate: keep focused chat (never auto-settle) on/off"
+contexts = ["pane", "workspace"]
+command = ["./board-safe-hibernate", "keep"]
+
+[[actions]]
+id = "restore"
+title = "Hibernate: re-arm stubs"
+contexts = ["workspace"]
+command = ["./board-safe-hibernate", "restore"]
+
+[[events]]
+on = "tab.closed"
+command = ["./board-safe-hibernate", "on-close"]
+
+[[events]]
+on = "pane.closed"
+command = ["./board-safe-hibernate", "on-close"]
+
+[[events]]
+on = "workspace.closed"
+command = ["./board-safe-hibernate", "on-close"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["./board-safe-hibernate", "remember"]
